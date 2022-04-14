@@ -5,6 +5,7 @@ import ai.morrissey.avdedit.toAvdConfigMap
 import ai.morrissey.avdedit.ui.widgets.DropDownList
 import ai.morrissey.avdedit.ui.widgets.KeyValueEntryDivider
 import ai.morrissey.avdedit.ui.widgets.ReadOnlyTextField
+import ai.morrissey.avdedit.ui.widgets.TextField
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
@@ -17,6 +18,7 @@ import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
@@ -33,7 +35,7 @@ private val homeDirectory by lazy { java.io.File(System.getProperty("user.home")
 @Preview
 fun App() {
     MaterialTheme(
-        colors = darkColors()
+        colors = colors
     ) {
         CompositionLocalProvider(LocalTextStyle provides TextStyle.Default.copy(color = itemTextColor)) {
             MainScreen()
@@ -43,8 +45,12 @@ fun App() {
 
 @Composable
 fun MainScreen() {
-    var avdDirectory = homeDirectory.resolve(".android").resolve("avd")
-    val currentConfigMap = mutableStateOf(LinkedHashMap<String, String>())
+    val avdDirectory = homeDirectory.resolve(".android").resolve("avd")
+
+    val avdList = avdDirectory.listFiles(FileFilter { it.isDirectory })?.toList() ?: emptyList()
+
+    val selectedAvd = remember { mutableStateOf(avdList.firstOrNull()) }
+    val currentConfigMap = remember { mutableStateOf(LinkedHashMap<String, String>()) }
 
     Column(modifier = Modifier.fillMaxSize().background(color = backgroundColor).padding(16.dp)) {
         if (avdDirectory.exists()) {
@@ -52,15 +58,11 @@ fun MainScreen() {
                 currentConfigMap.value.entries.forEach { println("${it.key}=${it.value}") }
             }
             Button(
-                colors = buttonColors(),
                 onClick = dumpCurrentConfigToConsole
             ) {
                 Text("dump current config to console")
             }
             Text("Found AVD directory: $avdDirectory")
-
-            val avdList = avdDirectory.listFiles(FileFilter { it.isDirectory })?.toList() ?: emptyList()
-            val selectedAvd = mutableStateOf(avdList.firstOrNull())
 
             Row(
                 verticalAlignment = Alignment.CenterVertically
@@ -74,46 +76,52 @@ fun MainScreen() {
                     items = avdList,
                     selected = selectedAvd,
                     itemLabelBuilder = { it?.nameWithoutExtension ?: "" },
-                    buttonColors = buttonColors(),
                     textStyle = MaterialTheme.typography.button,
                     contentTextStyle = MaterialTheme.typography.button.copy(fontWeight = FontWeight.Normal)
                 )
             }
 
-            selectedAvd.value?.let { avd ->
-                CompositionLocalProvider(
-                    LocalTextStyle provides LocalTextStyle.current.copy(
-                    fontFamily = FontFamily.Monospace
-                )) {
-                    Box(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        val state = rememberLazyListState()
-                        val avdConfig = avd.resolve("config.ini")
-                        if (avdConfig.isFile) {
-                            currentConfigMap.value = avdConfig.toAvdConfigMap()
+            // TODO make this use updated state when we select new
+            selectedAvd.value?.let { avd->
+                val avdConfig = avd.resolve("config.ini")
+                if (avdConfig.isFile) {
+                    currentConfigMap.value = avdConfig.toAvdConfigMap()
 
-                            LazyColumn(modifier = Modifier.padding(end = 8.dp), state = state) {
-                                currentConfigMap.value.entries.forEach { entry ->
-                                    item {
-                                        when (HandledType.forKey(entry.key)) {
-                                            HandledType.RealBoolean -> RealBooleanEntryView(entry)
-                                            HandledType.YesNoBoolean -> YesNoBooleanEntryView(entry)
-                                            null -> TextEntryView(entry)
-                                        }
-                                    }
-                                }
+                    ConfigEntries(currentConfigMap = currentConfigMap.value)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ConfigEntries(currentConfigMap: LinkedHashMap<String, String>) {
+    CompositionLocalProvider(
+        LocalTextStyle provides LocalTextStyle.current.copy(
+            fontFamily = FontFamily.Monospace
+        )) {
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            val state = rememberLazyListState()
+
+                LazyColumn(modifier = Modifier.padding(end = 8.dp), state = state) {
+                    currentConfigMap.entries.forEach { entry ->
+                        item {
+                            when (HandledType.forKey(entry.key)) {
+                                HandledType.RealBoolean -> RealBooleanEntryView(entry)
+                                HandledType.YesNoBoolean -> YesNoBooleanEntryView(entry)
+                                null -> TextEntryView(entry)
                             }
-                            VerticalScrollbar(
-                                modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-                                adapter = rememberScrollbarAdapter(
-                                    scrollState = state
-                                )
-                            )
                         }
                     }
                 }
-            }
+                VerticalScrollbar(
+                    modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                    adapter = rememberScrollbarAdapter(
+                        scrollState = state
+                    )
+                )
         }
     }
 }
@@ -134,7 +142,8 @@ fun RealBooleanEntryView(entry: MutableMap.MutableEntry<String, String>) {
                 onCheckedChange = {
                     entry.setValue(it.toString())
                     checked.value = it
-                }
+                },
+                colors = checkboxColors()
             )
         }
     }
@@ -160,7 +169,8 @@ fun YesNoBooleanEntryView(entry: MutableMap.MutableEntry<String, String>) {
                     val value = if (it) "yes" else "no"
                     entry.setValue(value)
                     checked.value = it
-                }
+                },
+                colors = checkboxColors()
             )
         }
     }
@@ -175,7 +185,7 @@ fun TextEntryView(entry: MutableMap.MutableEntry<String, String>) {
         )
         KeyValueEntryDivider()
         val textValue = mutableStateOf(entry.value)
-        ai.morrissey.avdedit.ui.widgets.TextField(
+        TextField(
             modifier = Modifier.weight(1f).padding(start = 4.dp, end = 4.dp),
             text = textValue.value,
             onValueChange = { value ->

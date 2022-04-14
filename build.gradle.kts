@@ -26,11 +26,16 @@ tasks.withType<KotlinCompile> {
 
 compose.desktop {
     application {
-        mainClass = "MainKt"
+        mainClass = "ai.morrissey.avdedit.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "avdedit"
             packageVersion = "1.0.0"
+
+            macOS {
+                dockName = "AVDEdit"
+                jvmArgs("-Dapple.awt.application.appearance=system")
+            }
         }
     }
 }

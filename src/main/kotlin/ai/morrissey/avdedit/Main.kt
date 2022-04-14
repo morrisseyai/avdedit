@@ -16,6 +16,7 @@ fun main() = application {
     )
     Window(
         state = windowState,
+        title = "AVDEdit",
         onCloseRequest = ::exitApplication
     ) {
         App()
