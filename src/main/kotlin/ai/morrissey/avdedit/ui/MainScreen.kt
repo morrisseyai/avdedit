@@ -2,6 +2,7 @@ package ai.morrissey.avdedit.ui
 
 import ai.morrissey.avdedit.HandledType
 import ai.morrissey.avdedit.toAvdConfigMap
+import ai.morrissey.avdedit.ui.widgets.DropDownList
 import ai.morrissey.avdedit.ui.widgets.KeyValueEntryDivider
 import ai.morrissey.avdedit.ui.widgets.ReadOnlyTextField
 import androidx.compose.desktop.ui.tooling.preview.Preview
@@ -20,8 +21,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.io.FileFilter
 
 private val homeDirectory by lazy { java.io.File(System.getProperty("user.home")) }
@@ -41,9 +44,9 @@ fun App() {
 @Composable
 fun MainScreen() {
     var avdDirectory = homeDirectory.resolve(".android").resolve("avd")
+    val currentConfigMap = mutableStateOf(LinkedHashMap<String, String>())
 
     Column(modifier = Modifier.fillMaxSize().background(color = backgroundColor).padding(16.dp)) {
-        val currentConfigMap = mutableStateOf(LinkedHashMap<String, String>())
         if (avdDirectory.exists()) {
             val dumpCurrentConfigToConsole: () -> Unit = {
                 currentConfigMap.value.entries.forEach { println("${it.key}=${it.value}") }
@@ -56,10 +59,28 @@ fun MainScreen() {
             }
             Text("Found AVD directory: $avdDirectory")
 
-            val avdList = avdDirectory.listFiles(FileFilter { it.isDirectory })
-            val avd = avdList?.first()
-            if (avd != null) {
-                Text("Found AVD: $avd")
+            val avdList = avdDirectory.listFiles(FileFilter { it.isDirectory })?.toList() ?: emptyList()
+            val selectedAvd = mutableStateOf(avdList.firstOrNull())
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    modifier = Modifier.padding(end = 16.dp),
+                    text = "Select an AVD from the list:",
+                    fontSize = 16.sp
+                )
+                DropDownList(
+                    items = avdList,
+                    selected = selectedAvd,
+                    itemLabelBuilder = { it?.nameWithoutExtension ?: "" },
+                    buttonColors = buttonColors(),
+                    textStyle = MaterialTheme.typography.button,
+                    contentTextStyle = MaterialTheme.typography.button.copy(fontWeight = FontWeight.Normal)
+                )
+            }
+
+            selectedAvd.value?.let { avd ->
                 CompositionLocalProvider(
                     LocalTextStyle provides LocalTextStyle.current.copy(
                     fontFamily = FontFamily.Monospace
