@@ -1,6 +1,7 @@
 package ai.morrissey.avdedit.ui
 
 import ai.morrissey.avdedit.HandledType
+import ai.morrissey.avdedit.saveToFile
 import ai.morrissey.avdedit.toAvdConfigMap
 import ai.morrissey.avdedit.ui.widgets.DropDownList
 import ai.morrissey.avdedit.ui.widgets.KeyValueEntryDivider
@@ -27,9 +28,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.io.File
 import java.io.FileFilter
 
-private val homeDirectory by lazy { java.io.File(System.getProperty("user.home")) }
+private val homeDirectory by lazy { File(System.getProperty("user.home")) }
 
 @Composable
 @Preview
@@ -81,13 +83,20 @@ fun MainScreen() {
                 )
             }
 
-            // TODO make this use updated state when we select new
-            selectedAvd.value?.let { avd->
+            selectedAvd.value?.let { avd ->
                 val avdConfig = avd.resolve("config.ini")
                 if (avdConfig.isFile) {
                     currentConfigMap.value = avdConfig.toAvdConfigMap()
 
                     ConfigEntries(currentConfigMap = currentConfigMap.value)
+
+                    Row {
+                        Button(
+                            onClick = { currentConfigMap.value.saveToFile(avdConfig) }
+                        ) {
+                            Text("Save")
+                        }
+                    }
                 }
             }
         }
@@ -95,17 +104,17 @@ fun MainScreen() {
 }
 
 @Composable
-fun ConfigEntries(currentConfigMap: LinkedHashMap<String, String>) {
+fun ColumnScope.ConfigEntries(currentConfigMap: LinkedHashMap<String, String>) {
     CompositionLocalProvider(
         LocalTextStyle provides LocalTextStyle.current.copy(
             fontFamily = FontFamily.Monospace
         )) {
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.weight(1f).fillMaxSize()
         ) {
             val state = rememberLazyListState()
 
-                LazyColumn(modifier = Modifier.padding(end = 8.dp), state = state) {
+                LazyColumn(modifier = Modifier.padding(end = 10.dp), state = state) {
                     currentConfigMap.entries.forEach { entry ->
                         item {
                             when (HandledType.forKey(entry.key)) {

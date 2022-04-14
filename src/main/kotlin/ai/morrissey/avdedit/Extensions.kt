@@ -10,3 +10,11 @@ internal fun File.toAvdConfigMap() = this.useLines { lineSequence ->
     }
     configValuesMap
 }
+
+internal fun LinkedHashMap<String, String>.saveToFile(file: File) {
+    file.writeText(
+        text = map { "${it.key}=${it.value}" }
+            .sorted()
+            .joinToString("\n")
+    )
+}
