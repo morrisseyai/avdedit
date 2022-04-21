@@ -23,7 +23,7 @@ fun <T> DropDownList(
     var expanded by remember { mutableStateOf(false) }
     Box(modifier = modifier.wrapContentSize(Alignment.TopStart)) {
         Button(
-            modifier = Modifier.wrapContentWidth(),
+            modifier = Modifier.wrapContentWidth().height(32.dp),
             onClick = { expanded = true },
             colors = buttonColors,
             contentPadding = PaddingValues(
